@@ -18,6 +18,7 @@ import 'dart:async';
 import '../controllers/dashboard_card_controller.dart';
 import '../widgets/custom_button.dart';
 import '../widgets/poppins_text.dart';
+import 'report_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   final bool showLoginSuccess;
@@ -36,7 +37,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     _loadUserName();
-    
+   
     // Show login success snackbar only once, after first frame
     if (widget.showLoginSuccess && !_loginSnackbarShown) {
       _loginSnackbarShown = true;
@@ -175,7 +176,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             onTap: () {
                               Get.to(() => const PickupScreen());
                             },
-                            child: _DashboardCard(icon: Icons.local_shipping, label: 'Pickup'),
+                            child: _DashboardCard(icon: Icons.local_shipping, label: 'Loadsheet'),
                           ),
                         if (cardController.showArrival.value)
                           GestureDetector(
@@ -194,8 +195,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           _DashboardCard(icon: Icons.delivery_dining, label: 'Delivery'),
                         if (cardController.showTracking.value)
                           _DashboardCard(icon: Icons.track_changes, label: 'Tracking'),
-                        if (cardController.showReport.value)
-                          _DashboardCard(icon: Icons.bar_chart, label: 'Report'),
+                        // Always show Report card
+                        GestureDetector(
+                          onTap: () {
+                            Get.to(() => const ReportScreen());
+                          },
+                          child: _DashboardCard(icon: Icons.bar_chart, label: 'Report'),
+                        ),
                       ],
                     )),
                   ),

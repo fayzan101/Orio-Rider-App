@@ -17,7 +17,8 @@ class PickupItem {
   final ParcelModel parcel;
   bool selected;
   bool isExpanded;
-  PickupItem({required this.parcel, this.selected = false, this.isExpanded = false});
+  bool alreadySubmitted; // New flag
+  PickupItem({required this.parcel, this.selected = false, this.isExpanded = false, this.alreadySubmitted = false});
 }
 
 class PickupScreen extends StatefulWidget {
@@ -103,7 +104,16 @@ class _PickupScreenState extends State<PickupScreen> {
   }
 
   void _showDeleteDialog() {
-    final selectedCount = cardController.pickupList.where((item) => item.selected).length;
+    final selectedItems = cardController.pickupList.where((item) => item.selected).toList();
+    final selectedCount = selectedItems.length;
+    String message;
+    if (selectedCount == 1 && selectedItems[0].alreadySubmitted) {
+      message = 'You want to delete this shipment';
+    } else if (selectedCount == 1) {
+      message = 'You want to delete this loadsheet';
+    } else {
+      message = 'You want to delete all loadhsheets';
+    }
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -121,11 +131,11 @@ class _PickupScreenState extends State<PickupScreen> {
             children: [
               Container(
                 decoration: const BoxDecoration(
-                  color: Color(0xFFE6F3FF),
+                  color: Color(0xFFE7E6F5),
                   shape: BoxShape.circle,
                 ),
                 padding: const EdgeInsets.all(24),
-                child: const Icon(Icons.delete_outline, color: Color(0xFF007AFF), size: 56),
+                child: const Icon(Icons.delete_outline, color: Color(0xFF18136E), size: 56),
               ),
               const SizedBox(height: 24),
               Text(
@@ -134,9 +144,7 @@ class _PickupScreenState extends State<PickupScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                selectedCount == 1
-                    ? 'You want to delete this pickup'
-                    : 'You want to delete all pickups',
+                message,
                 style: GoogleFonts.poppins(color: Color(0xFF7B7B7B), fontSize: 15),
                 textAlign: TextAlign.center,
               ),
@@ -161,7 +169,7 @@ class _PickupScreenState extends State<PickupScreen> {
                   Expanded(
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF007AFF),
+                        backgroundColor: const Color(0xFF18136E),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -188,11 +196,11 @@ class _PickupScreenState extends State<PickupScreen> {
     final selectedCount = cardController.pickupList.where((item) => item.selected).length;
     String message;
     if (total == 1) {
-      message = 'This pickup has been created';
+      message = 'Loadsheet created successfully';
     } else if (selectedCount > 0 && selectedCount < total) {
-      message = 'Selected pickups have been created';
+      message = 'Loadsheet created successfully';
     } else {
-      message = 'All pickups have been created';
+      message = 'Loadsheet created successfully';
     }
     showDialog(
       context: context,
@@ -345,18 +353,35 @@ class _PickupScreenState extends State<PickupScreen> {
           );
         },
       );
-      for (final item in itemsToSubmit) {
-        await ParcelService.createLoadsheet(item.parcel.shipmentNo);
-      }
+      final shipmentNos = itemsToSubmit.map((item) => item.parcel.shipmentNo).join(',');
+      final response = await ParcelService.createLoadsheet(shipmentNos);
       Navigator.of(context).pop();
+      String? loadsheetNo;
+      try {
+        if (response != null && response.data != null) {
+          final data = response.data;
+          if (data is Map && data['data'] != null && data['data']['loadsheet_number'] != null) {
+            loadsheetNo = data['data']['loadsheet_number'].toString();
+          } else if (data is Map && data['data'] != null && data['data']['body'] != null) {
+            final body = data['data']['body'];
+            if (body is Map && body['loadsheet_number'] != null) {
+              loadsheetNo = body['loadsheet_number'].toString();
+            } else if (body is List && body.isNotEmpty && body[0]['loadsheet_number'] != null) {
+              loadsheetNo = body[0]['loadsheet_number'].toString();
+            }
+          }
+        }
+      } catch (e) {
+        print('Error extracting loadsheet_number: $e');
+      }
 
       setState(() {
         _ineligibleItems.clear();
       });
       final totalCount = itemsToSubmit.length;
       String message = totalCount == 1
-          ? 'This pickup has been created successfully'
-          : 'All pickups have been created successfully';
+          ? 'Loadsheet  created successfully'
+          : 'Loadsheet created successfully';
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -399,6 +424,14 @@ class _PickupScreenState extends State<PickupScreen> {
                         style: GoogleFonts.poppins(color: Color(0xFF7B7B7B), fontSize: 15),
                         textAlign: TextAlign.center,
                       ),
+                      if (loadsheetNo != null) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          'Loadsheet No: $loadsheetNo',
+                          style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: Color(0xFF18136E), fontSize: 16),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
                       const SizedBox(height: 24),
                       SizedBox(
                         width: double.infinity,
@@ -465,7 +498,7 @@ class _PickupScreenState extends State<PickupScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Failed to create pickups. Please try again.',
+                        'Failed to create loadsheet. Please try again.',
                         style: GoogleFonts.poppins(color: Color(0xFF7B7B7B), fontSize: 15),
                         textAlign: TextAlign.center,
                       ),
@@ -542,7 +575,7 @@ class _PickupScreenState extends State<PickupScreen> {
             icon: const Icon(Icons.arrow_back, color: Colors.black),
             onPressed: () => Navigator.of(context).pop(),
           ),
-          title: Text('Pickup', style: GoogleFonts.poppins(color: Colors.black, fontSize: 18)),
+          title: Text('Loadsheet', style: GoogleFonts.poppins(color: Colors.black, fontSize: 18)),
           actions: [
             IconButton(
               icon: const Icon(Icons.menu, color: Colors.black),
@@ -765,7 +798,7 @@ class _PickupScreenState extends State<PickupScreen> {
                   width: double.infinity,
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: hasIneligibleItems ? Colors.grey : const Color(0xFF18136E),
+                      backgroundColor: hasIneligibleItems ? Colors.grey : const Color(0xFF007AFF),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),

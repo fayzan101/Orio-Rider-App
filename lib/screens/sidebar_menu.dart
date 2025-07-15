@@ -20,7 +20,7 @@ class SidebarScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const darkBlue = Color(0xFF007AFF);
+    const darkBlue = Color(0xFF18136E);
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,

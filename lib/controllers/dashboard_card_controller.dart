@@ -38,7 +38,7 @@ class DashboardCardController extends GetxController {
   Future<void> fetchFlags() async {
     final prefs = await SharedPreferences.getInstance();
     showManifest.value = (prefs.getInt('manifest') ?? 0) == 1;
-    showReport.value = (prefs.getInt('report') ?? 0) == 1;
+    showReport.value = (prefs.getInt('report') ?? 0) == 0;
     showDeManifest.value = (prefs.getInt('de_manifest') ?? 0) == 1;
     showCreateSheet.value = (prefs.getInt('create_sheet') ?? 0) == 1;
     showDelivery.value = (prefs.getInt('delivery') ?? 0) == 1;

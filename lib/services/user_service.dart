@@ -18,8 +18,8 @@ class UserService {
   static const String _userInfoKey = 'user_info';
   static const String _emailKey = 'email';
   static const String _passwordKey = 'password';
-  
-  
+ 
+ 
 
   // Save user data to SharedPreferences
   static Future<void> saveUser(UserModel user) async {
@@ -68,7 +68,7 @@ class UserService {
     final credentials = await getCredentials();
     final email = credentials['email'];
     final password = credentials['password'];
-    
+   
     if (email != null && password != null && email.isNotEmpty && password.isNotEmpty) {
       return '$email:$password';
     }
@@ -82,7 +82,7 @@ class UserService {
       // Trim email and password
       final trimmedEmail = email.trim();
       final trimmedPassword = password.trim();
-      
+     
       final headers = {
         'Content-Type': 'application/json',
         'Authorization': '$trimmedEmail:$trimmedPassword',
@@ -91,64 +91,69 @@ class UserService {
         'email': trimmedEmail,
         'password': trimmedPassword,
       });
-      
+     
       final responseData = await Network.postApi(url, data, headers);
       final json = responseData is String ? jsonDecode(responseData) : responseData;
-      
+     
       // Temporary debugging for correct credentials
       print('=== DEBUG LOGIN ===');
       print('Email provided: $trimmedEmail');
       print('Password provided: $trimmedPassword');
       print('API Response: $json');
-      
+     
       // Check if response is null or invalid
       if (json == null) {
         print('Login failed: Null response from server');
         return false;
       }
-      
+     
       // Check if status is 0 (failed)
       if (json['status'] == 0) {
         print('Login failed: ${json['message'] ?? 'Invalid credentials'}');
         return false;
       }
-      
+     
       // Check if status is 1 (success) and data exists
       if (json['status'] == 1 && json['data'] != null) {
         final data = json['data'];
-        
+       
         // Check if response code is 200
         if (data['response'] != 200) {
           print('Login failed: API response code ${data['response']}');
           return false;
         }
-        
+       
         // Check if body exists and is a list with data
         if (data['body'] == null || data['body'] is! List || data['body'].isEmpty) {
           print('Login failed: No user data returned');
           return false;
         }
-        
+       
         final user = data['body'][0];
         print('User data returned: $user');
-        
+       
         // Validate required user fields
         final empCode = user['emp_code']?.toString() ?? '';
         final empName = user['emp_name']?.toString() ?? '';
         final stationName = user['station_name']?.toString() ?? '';
         final returnedEmail = user['email']?.toString() ?? '';
-        
+        final designation = user['designation']?.toString() ?? '';
+        String city = user['city']?.toString() ?? '';
+        if (city.isEmpty && user['city_code'] != null) {
+          city = user['city_code'].toString();
+        }
+       
         print('Emp Code: "$empCode"');
         print('Emp Name: "$empName"');
         print('Station Name: "$stationName"');
         print('Returned Email: "$returnedEmail"');
-        
+       
         // Check if essential user data is present
         if (empCode.isEmpty || empName.isEmpty) {
           print('Login failed: Missing essential user data');
           return false;
         }
-        
+       
         // For now, let's be more lenient with email validation
         // Only check email if it's actually returned by the API
         if (returnedEmail.isNotEmpty && returnedEmail.toLowerCase() != trimmedEmail.toLowerCase()) {
@@ -156,7 +161,7 @@ class UserService {
           print('Provided: $trimmedEmail, Returned: $returnedEmail');
           return false;
         }
-        
+       
         // If all validations pass, save user data
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('emp_code', empCode);
@@ -167,10 +172,12 @@ class UserService {
         await prefs.setString('logged_in_name', empName);
         await prefs.setString('logged_in_password', trimmedPassword);
         await prefs.setString('arrival', user['arrival']?.toString() ?? '0');
+        await prefs.setString('designation', designation);
+        await prefs.setString('city', city);
         // Save email for future API calls
         await prefs.setString(_emailKey, trimmedEmail);
         await prefs.setString(_passwordKey, trimmedPassword);
-        
+       
         print('Login successful for user: $empName ($empCode)');
         return true;
       } else {
@@ -191,6 +198,8 @@ class UserService {
       'emp_name': prefs.getString(_empNameKey),
       'station_name': prefs.getString(_stationNameKey),
       'arrival': prefs.getString('arrival'),
+      'designation': prefs.getString('designation'),
+      'city': prefs.getString('city'),
     };
   }
 
@@ -209,4 +218,4 @@ class UserService {
 
 
 
-} 
+}

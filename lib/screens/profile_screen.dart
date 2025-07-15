@@ -12,11 +12,8 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  String fullName = '';
-  String password = '';
+  Map<String, String?>? userInfo;
   bool _obscurePassword = true;
-
-  final TextEditingController _nameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
   @override
@@ -26,32 +23,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _loadUserData();
-  }
-
-  @override
   void dispose() {
-    _nameController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
   void _loadUserData() async {
+    final info = await UserService.getUserInfo();
     final prefs = await SharedPreferences.getInstance();
-    final loadedName = prefs.getString('logged_in_name') ?? '';
     final loadedPassword = prefs.getString('logged_in_password') ?? '';
     setState(() {
-      fullName = loadedName;
-      password = loadedPassword;
-      _nameController.text = loadedName;
+      userInfo = info;
       _passwordController.text = loadedPassword;
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    if (userInfo == null) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -63,10 +56,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         extendBody: true,
         backgroundColor: Colors.white,
         appBar: AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: Color(0xFF007AFF),
           elevation: 0,
-          iconTheme: const IconThemeData(color: Colors.black),
-          title: Text('Profile Page', style: GoogleFonts.poppins(color: Colors.black)),
+          iconTheme: const IconThemeData(color: Colors.white),
+          title: Text('Profile Page', style: GoogleFonts.poppins(color: Colors.white)),
         ),
         body: SafeArea(
           bottom: false,
@@ -80,7 +73,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 4),
                 TextFormField(
                   enabled: false,
-                  controller: _nameController,
+                  initialValue: userInfo!["emp_name"] ?? '',
                   style: GoogleFonts.poppins(),
                   decoration: const InputDecoration(
                     filled: true,
@@ -94,7 +87,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 4),
                 TextFormField(
                   enabled: false,
-                  initialValue: 'Driver',
+                  initialValue: userInfo!["designation"] ?? '',
                   style: GoogleFonts.poppins(),
                   decoration: const InputDecoration(
                     filled: true,
@@ -108,7 +101,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 4),
                 TextFormField(
                   enabled: false,
-                  initialValue: 'KHI',
+                  initialValue: userInfo!["city"] ?? '',
                   style: GoogleFonts.poppins(),
                   decoration: const InputDecoration(
                     filled: true,
@@ -122,7 +115,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 4),
                 TextFormField(
                   enabled: false,
-                  initialValue: 'Karachi',
+                  initialValue: userInfo!["station_name"] ?? '',
                   style: GoogleFonts.poppins(),
                   decoration: const InputDecoration(
                     filled: true,
