@@ -1,6 +1,6 @@
-# Fly Courier 
+# Orio Rider 
 
-A project of Fly International
+A project of Orio Tech
 
 ## Getting Started
 
