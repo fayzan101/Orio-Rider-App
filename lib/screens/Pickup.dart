@@ -12,6 +12,8 @@ import 'profile_screen.dart';
 import 'qr_scanner_screen.dart';
 import 'package:get/get.dart';
 import '../controllers/dashboard_card_controller.dart';
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class PickupItem {
   final ParcelModel parcel;
@@ -19,6 +21,24 @@ class PickupItem {
   bool isExpanded;
   bool alreadySubmitted; // New flag
   PickupItem({required this.parcel, this.selected = false, this.isExpanded = false, this.alreadySubmitted = false});
+
+  Map<String, dynamic> toJson() {
+    return {
+      'parcel': parcel.toJson(),
+      'selected': selected,
+      'isExpanded': isExpanded,
+      'alreadySubmitted': alreadySubmitted,
+    };
+  }
+
+  factory PickupItem.fromJson(Map<String, dynamic> json) {
+    return PickupItem(
+      parcel: ParcelModel.fromJson(json['parcel'] as Map<String, dynamic>),
+      selected: json['selected'] ?? false,
+      isExpanded: json['isExpanded'] ?? false,
+      alreadySubmitted: json['alreadySubmitted'] ?? false,
+    );
+  }
 }
 
 class PickupScreen extends StatefulWidget {
@@ -42,6 +62,9 @@ class _PickupScreenState extends State<PickupScreen> {
   void initState() {
     super.initState();
     _loadUserName();
+    _loadPickupList();
+    // Listen for changes to pickupList and save
+    cardController.pickupList.listen((_) => _savePickupList());
   }
 
   Future<void> _loadUserName() async {
@@ -58,6 +81,22 @@ class _PickupScreenState extends State<PickupScreen> {
         });
       }
     }
+  }
+
+  Future<void> _loadPickupList() async {
+    final prefs = await SharedPreferences.getInstance();
+    final jsonString = prefs.getString('pickup_list');
+    if (jsonString != null) {
+      final List<dynamic> jsonList = json.decode(jsonString);
+      final items = jsonList.map((e) => PickupItem.fromJson(e)).toList();
+      cardController.pickupList.assignAll(items);
+    }
+  }
+
+  Future<void> _savePickupList() async {
+    final prefs = await SharedPreferences.getInstance();
+    final jsonList = cardController.pickupList.map((e) => e.toJson()).toList();
+    await prefs.setString('pickup_list', json.encode(jsonList));
   }
 
   void _showSidebar() async {
@@ -101,6 +140,7 @@ class _PickupScreenState extends State<PickupScreen> {
         QrScannerScreen.scannerKey.currentState!.removeScannedId(id);
       }
     }
+    _savePickupList();
   }
 
   void _showDeleteDialog() {
@@ -110,9 +150,9 @@ class _PickupScreenState extends State<PickupScreen> {
     if (selectedCount == 1 && selectedItems[0].alreadySubmitted) {
       message = 'You want to delete this shipment';
     } else if (selectedCount == 1) {
-      message = 'You want to delete this loadsheet';
+      message = 'You want to delete this shipment';
     } else {
-      message = 'You want to delete all loadhsheets';
+      message = 'You want to delete all shipments';
     }
     showModalBottomSheet(
       context: context,
@@ -323,6 +363,12 @@ class _PickupScreenState extends State<PickupScreen> {
         setState(() {
           _ineligibleItems.clear();
           _ineligibleItems.addAll(ineligibleItems);
+          // Select only ineligible items
+          for (var item in cardController.pickupList) {
+            item.selected = ineligibleItems.contains(item.parcel.shipmentNo);
+          }
+          _selectAll = false;
+          cardController.pickupList.refresh();
         });
         // Add a delay before showing the snackbar
         await Future.delayed(const Duration(seconds: 1));
@@ -337,7 +383,6 @@ class _PickupScreenState extends State<PickupScreen> {
             ),
           );
         }
-        _selectAll = false;
         return;
       }
 
@@ -498,7 +543,7 @@ class _PickupScreenState extends State<PickupScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Failed to create loadsheet. Please try again.',
+                        'Failed to create loadsheets. Please try again.',
                         style: GoogleFonts.poppins(color: Color(0xFF7B7B7B), fontSize: 15),
                         textAlign: TextAlign.center,
                       ),
@@ -544,6 +589,7 @@ class _PickupScreenState extends State<PickupScreen> {
       },
       alreadySubmittedIds: alreadySubmittedIds,
     ));
+    _savePickupList();
   }
 
   List<PickupItem> get _filteredPickupList {
